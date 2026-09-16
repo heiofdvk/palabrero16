@@ -68,7 +68,8 @@ body{
   background:var(--raise);border:none;border-radius:14px;
   color:var(--text);cursor:pointer;padding:0;
 }
-.round:active{background:#1B2521}
+.round{transition:transform .07s ease,background .12s ease}
+.round:active{background:#1B2521;transform:scale(.93)}
 .round[aria-pressed="false"]{color:var(--dim)}
 .bar .mid{text-align:center;min-width:0}
 .bar h1{
@@ -139,11 +140,11 @@ body{
   padding:10px 12px calc(12px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;align-items:center;gap:9px;
 }
-.entry{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:236px}
+.entry{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:252px}
 .et{
   aspect-ratio:1;display:grid;place-items:center;border-radius:8px;
   background:var(--raise);box-shadow:inset 0 0 0 1px var(--card-line);
-  font-size:1.2rem;font-weight:800;line-height:1;color:var(--text);
+  font-size:1.32rem;font-weight:800;line-height:1;color:var(--text);
 }
 .et.on{box-shadow:inset 0 0 0 1.5px var(--mint)}
 .et.pop{animation:pop .13s ease}
@@ -151,17 +152,19 @@ body{
 .entry.shake{animation:shake .38s ease}
 @keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-4px)}}
 
-#keyboard{width:100%;display:flex;flex-direction:column;gap:6px}
+#keyboard{width:100%;max-width:430px;display:flex;flex-direction:column;gap:7px}
 .krow{display:flex;gap:5px;justify-content:center}
 .key{
-  font:inherit;font-weight:700;font-size:14px;
-  flex:1 1 auto;min-width:0;height:46px;
+  font-family:inherit;font-weight:700;font-size:clamp(15px,4.4vw,19px);
+  flex:1 1 auto;min-width:0;height:clamp(50px,7.4vh,58px);
   background:var(--raise);color:var(--text);
-  border:none;border-radius:8px;cursor:pointer;
+  border:none;border-radius:9px;cursor:pointer;
   display:grid;place-items:center;
+  user-select:none;-webkit-user-select:none;
+  transition:transform .07s ease,opacity .07s ease,background .12s ease,color .15s ease;
 }
-.key:active{background:#202B26}
-.key.wide{flex:1.7 1 auto;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.key.hit{transform:scale(.92);opacity:.68;background:#26332D}
+.key.wide{flex:1.75 1 auto;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .key.used{color:var(--muted)}
 .key.dead{background:#171E1B;color:var(--dim)}
 .key:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
@@ -172,15 +175,20 @@ body{
   border:none;border-radius:16px;padding:17px;cursor:pointer;
   font:inherit;font-size:1.05rem;font-weight:800;letter-spacing:.01em;
 }
-.share:active{filter:brightness(.94)}
+.share{transition:transform .07s ease,filter .1s ease}
+.share:active{filter:brightness(.92);transform:scale(.985)}
 .ghost{
   width:100%;background:transparent;color:var(--muted);
   border:1px solid var(--card-line);border-radius:14px;padding:13px;cursor:pointer;
   font:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
 }
 
+.hapswitch{
+  position:fixed;left:0;bottom:0;width:1px;height:1px;
+  opacity:0;pointer-events:none;border:0;margin:0;padding:0;
+}
 .toast{
-  position:fixed;left:50%;bottom:calc(248px + env(safe-area-inset-bottom));
+  position:fixed;left:50%;bottom:calc(276px + env(safe-area-inset-bottom));
   transform:translateX(-50%);
   background:var(--text);color:var(--ground);
   padding:9px 16px;border-radius:999px;
@@ -317,6 +325,8 @@ body{
     <div id="keyboard"></div>
   </div>
 </div>
+
+<input type="checkbox" switch class="hapswitch" id="hap" tabindex="-1" aria-hidden="true">
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -499,13 +509,40 @@ body{
     }
   }
 
+  /* En iOS la única vibración disponible desde la web es la del control
+     <input type="checkbox" switch>: al tocar un label apuntado a él, Safari
+     hace el haptic. En Android alcanza navigator.vibrate. */
+  function haptic(){
+    if(navigator.vibrate){ try{ navigator.vibrate(8); }catch(e){} }
+  }
+
   function makeKey(label, value, wide){
-    var b = document.createElement("button");
-    b.type = "button";
+    var b = document.createElement("label");
     b.className = "key" + (wide ? " wide" : "");
+    b.setAttribute("role", "button");
+    b.setAttribute("tabindex", "0");
+    b.setAttribute("for", "hap");
     b.textContent = label;
+
+    function down(){ b.classList.add("hit"); haptic(); }
+    function up(){ b.classList.remove("hit"); }
+    b.addEventListener("pointerdown", down);
+    b.addEventListener("pointerup", up);
+    b.addEventListener("pointercancel", up);
+    b.addEventListener("pointerleave", up);
     b.addEventListener("click", function(){ press(value); });
+    b.addEventListener("keydown", function(e){
+      if(e.key === " " || e.key === "Enter"){ e.preventDefault(); press(value); }
+    });
     return b;
+  }
+
+  /* la misma pulsación visible al escribir con el teclado físico */
+  function flashKey(v){
+    var el = (v === "ENTER" || v === "BACK") ? null : keyEls[v];
+    if(!el) return;
+    el.classList.add("hit");
+    setTimeout(function(){ el.classList.remove("hit"); }, 110);
   }
 
   function buildKeyboard(){
@@ -948,7 +985,7 @@ body{
     if(e.key === "Backspace"){ e.preventDefault(); press("BACK"); return; }
     if(e.key.length === 1){
       var ch = norm(e.key);
-      if(/^[A-ZÑ]$/.test(ch)){ e.preventDefault(); press(ch); }
+      if(/^[A-ZÑ]$/.test(ch)){ e.preventDefault(); flashKey(ch); press(ch); }
     }
   });
 
