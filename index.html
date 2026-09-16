@@ -342,10 +342,52 @@ body{
 (function(){
   "use strict";
 
-  var WORDS = ["LIBRO","VERDE","FUEGO","PLAYA","SUEÑO","CANTO","MUNDO","TIGRE",
-               "NOCHE","JUGAR","PIANO","SALUD","BRAVO","QUESO","LLAVE","ZORRO"];
-  var COLS = 5, BOARDS = WORDS.length, MAX = 21, MINROWS = 7;
-  var STORE = "palabrero16.v2";
+  var POOL = ("señor noche gente padre mundo madre lugar amigo mujer luego parte razon \
+    tarde chica salir forma chico adios ayuda pasar feliz venir miedo justo \
+    poder cinco cerca viejo tomar punto coche clase llama igual juego final \
+    listo vivir culpa abajo atras mayor morir facil comer lista creer joven \
+    medio lejos matar sitio basta falta fuego poner calle libro orden perro \
+    cielo viaje libre jugar resto trato amiga grupo error largo sueño dolor \
+    negro ganar gusto pobre mente campo hotel pagar mitad vista linea salvo \
+    tonto carta novio traje siete barco prisa suelo capaz broma dulce avion \
+    papel deseo junto salud señal honor corte carne lindo cargo baile beber \
+    mirar sacar reina causa cenar banco pelea norte llave exito pedir radio \
+    calma hogar fondo parar lleno pista nivel color bolsa banda santo abrir \
+    tocar ojala golpe nueve bomba traer comun vuelo valor doble calor brazo \
+    pesar santa subir turno leche heroe trago arbol ruido lucha reloj volar \
+    hielo coger pared silla verde bajar playa total serie mando apoyo epoca \
+    echar magia nariz paseo envio carga robar oeste cerdo lider grave humor \
+    marca dueño pollo menor video local cinta costa polvo debil deber pecho \
+    crear guapo extra primo genio queso gordo toque techo truco salon sucio \
+    firma curso disco corta lunes falso corto tumba tarea movil vacio plato \
+    bordo nieve fecha droga siglo pieza legal reino clave bravo bolso ritmo \
+    socio motor tirar carro venta andar obvio bruja firme regla copia meter \
+    fumar grado pizza plata suave arena mover casar canal torre virus aviso \
+    cruel ducha actor salsa tribu ciego celda super junta patio conde lento \
+    chino pasta deuda nadar piano civil museo huevo cable metro marco ronda \
+    metal boton espia crema flota placa sabor union punta pulso frase moral \
+    noble letra arroz plaza pinta hueso caida salto sonar barra trozo rueda \
+    grano borde rumbo valle guion animo clima caray tunel fatal tarta breve \
+    acero robot aldea reves circo texto barba ideal lanza falla cañon votar \
+    grita viuda drama cueva abril solar dolar casco bello junio baila tigre \
+    indio monte cazar rollo plazo rango jaula dosis duque trono canto saque \
+    costo besar lavar nieto patas motel etapa fruta pesca plano fines queja \
+    horno logro vodka rifle grito rumor oreja raton marzo feria parto mafia \
+    selva digno rezar otoño autor rabia cabra dieta grasa cajon cuero quema \
+    temor aguja sello sabio poema tenis pluma fallo duelo radar gesto susto \
+    temer enero diosa baron").toUpperCase().split(/\s+/);
+
+  /* 16 palabras nuevas por partida, sorteadas del pool */
+  var WORDS = [];
+  function drawWords(){
+    var bag = POOL.slice(), out = [];
+    while(out.length < BOARDS && bag.length){
+      out.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
+    }
+    return out;
+  }
+  var COLS = 5, BOARDS = 16, MAX = 21, MINROWS = 7;
+  var STORE = "palabrero16.v3";
   var LAYOUT = ["QWERTYUIOP", "ASDFGHJKLÑ", "ZXCVBNM"];
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -464,7 +506,7 @@ body{
   function save(){
     try{
       localStorage.setItem(STORE, JSON.stringify({
-        guesses:state.guesses, solved:state.solved, sound:soundOn
+        words:WORDS, guesses:state.guesses, solved:state.solved, sound:soundOn
       }));
     }catch(e){}
   }
@@ -474,7 +516,10 @@ body{
       if(!raw) return;
       var d = JSON.parse(raw);
       if(typeof d.sound === "boolean") soundOn = d.sound;
+      if(!Array.isArray(d.words) || d.words.length !== BOARDS) return;
+      if(!d.words.every(function(w){ return typeof w === "string" && w.length === COLS; })) return;
       if(!Array.isArray(d.guesses) || !Array.isArray(d.solved) || d.solved.length !== BOARDS) return;
+      WORDS = d.words;
       state.guesses = d.guesses.slice(0, MAX);
       state.solved = d.solved;
     }catch(e){}
@@ -765,6 +810,7 @@ body{
 
   function reset(){
     wipe();
+    WORDS = drawWords();
     state = { guesses:[], cur:"", solved:new Array(BOARDS).fill(null) };
     closeSheet();
     paintAll(false);
@@ -829,7 +875,7 @@ body{
 
     if(kind === "help"){
       [
-        "Escribís <b>una palabra de 5 letras</b> y se juega contra los <b>16 tableros a la vez</b>. Cada tablero tiene su propia palabra secreta.",
+        "Escribís <b>una palabra de 5 letras</b> y se juega contra los <b>16 tableros a la vez</b>. Cada tablero tiene su propia palabra secreta, y cada partida sortea <b>16 palabras nuevas</b> de un pool de 400.",
         "Tenés <b>21 intentos</b> en total para resolver los 16. Un tablero se cierra con un tilde verde cuando cae su palabra.",
         "Como cada tablero necesita al menos un intento propio, la partida se marca <b>perdida en cuanto quedan menos intentos que tableros sin resolver</b>.",
         "Toc&aacute; la flechita de cada tablero para <b>ampliarlo</b> y verlo grande.",
@@ -991,6 +1037,7 @@ body{
 
   /* ================= arranque ================= */
   load();
+  if(WORDS.length !== BOARDS) WORDS = drawWords();
   sndBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
   sndIcon.setAttribute("href", soundOn ? "#i-sound" : "#i-mute");
   buildBoards();
