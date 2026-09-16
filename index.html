@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Palabrero">
+<meta name="theme-color" content="#0B100E">
+<style>
+  *{-webkit-text-size-adjust:100%}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Palabrero 16</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700;800&family=Outfit:wght@600;700&display=swap">
+</head>
+<body>
+<style>
+:root{
+  color-scheme: dark;
+  --ground:#0B100E;
+  --raise:#141C19;
+  --card:#111917;
+  --card-line:#1F2C27;
+  --card-win:#0F2019;
+  --card-win-line:#3D8A69;
+  --slot:#1A2320;
+  --absent:#272F2C;
+  --present:#BFA03A;
+  --correct:#5CBF90;
+  --on-fill:#F3F8F5;
+  --text:#EAF1ED;
+  --muted:#7E8D87;
+  --dim:#4E5B56;
+  --mint:#5CBF90;
+  --mint-ink:#07130D;
+}
+
+*{box-sizing:border-box}
+html,body{background:var(--ground)}
+body{
+  margin:0;color:var(--text);
+  font-family:"Figtree","Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
+  touch-action:manipulation;
+  overscroll-behavior-y:none;
+}
+.app{
+  max-width:560px;margin:0 auto;min-height:100vh;min-height:100dvh;
+  display:flex;flex-direction:column;
+  background:var(--ground);
+}
+
+/* ---------- barra superior ---------- */
+.bar{
+  position:sticky;top:0;z-index:20;
+  background:var(--ground);
+  display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+}
+.round{
+  width:44px;height:44px;flex:0 0 44px;
+  display:grid;place-items:center;
+  background:var(--raise);border:none;border-radius:14px;
+  color:var(--text);cursor:pointer;padding:0;
+}
+.round:active{background:#1B2521}
+.round[aria-pressed="false"]{color:var(--dim)}
+.bar .mid{text-align:center;min-width:0}
+.bar h1{
+  margin:0;font-family:"Outfit","Figtree",sans-serif;font-weight:700;
+  font-size:1.32rem;letter-spacing:-.01em;line-height:1.1;
+}
+.bar .sub{
+  margin:2px 0 0;font-size:10.5px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums;
+}
+.bar .sub2{
+  margin:1px 0 0;font-size:9.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);font-variant-numeric:tabular-nums;
+}
+.bar .sub2.warn{color:var(--present)}
+.bar .side{display:flex;gap:8px}
+
+/* ---------- tableros ---------- */
+.grid{
+  flex:1 1 auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  padding:4px 14px 18px;
+  align-content:start;
+}
+.bd{
+  position:relative;
+  background:var(--card);border:1px solid var(--card-line);border-radius:14px;
+  padding:8px;
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.bd.win{background:var(--card-win);border-color:var(--card-win-line)}
+.bd.lost{opacity:.62}
+.wd{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--present)}
+.bd .top{display:flex;justify-content:space-between;align-items:center;height:18px}
+.zoom{
+  width:20px;height:20px;padding:0;border:none;background:transparent;
+  color:var(--dim);cursor:pointer;display:grid;place-items:center;
+}
+.bd.win .zoom{color:var(--card-win-line)}
+.no{font-size:10.5px;font-weight:800;color:var(--dim);font-variant-numeric:tabular-nums}
+.bd.win .no{color:var(--mint)}
+.mini{display:flex;flex-direction:column;gap:3px}
+.mrow{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.mt{
+  aspect-ratio:1;display:grid;place-items:center;border-radius:5px;
+  background:var(--slot);
+  font-size:clamp(11px,3.1vw,15px);font-weight:800;line-height:1;color:var(--muted);
+}
+.mt.absent{background:var(--absent);color:var(--dim)}
+.mt.present{background:var(--present);color:var(--on-fill)}
+.mt.correct{background:var(--correct);color:var(--on-fill)}
+.mt.empty{background:transparent;box-shadow:inset 0 0 0 1px var(--card-line)}
+.check{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:38px;height:38px;border-radius:50%;
+  background:var(--correct);color:var(--mint-ink);
+  display:grid;place-items:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+}
+.reveal{animation:rise .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* ---------- barra de escritura ---------- */
+.dock{
+  position:sticky;bottom:0;z-index:15;
+  background:var(--ground);
+  border-top:1px solid var(--card-line);
+  padding:10px 12px calc(12px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:center;gap:9px;
+}
+.entry{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;max-width:236px}
+.et{
+  aspect-ratio:1;display:grid;place-items:center;border-radius:8px;
+  background:var(--raise);box-shadow:inset 0 0 0 1px var(--card-line);
+  font-size:1.2rem;font-weight:800;line-height:1;color:var(--text);
+}
+.et.on{box-shadow:inset 0 0 0 1.5px var(--mint)}
+.et.pop{animation:pop .13s ease}
+@keyframes pop{from{transform:scale(.88)}to{transform:scale(1)}}
+.entry.shake{animation:shake .38s ease}
+@keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(4px)}50%{transform:translateX(-4px)}}
+
+#keyboard{width:100%;display:flex;flex-direction:column;gap:6px}
+.krow{display:flex;gap:5px;justify-content:center}
+.key{
+  font:inherit;font-weight:700;font-size:14px;
+  flex:1 1 auto;min-width:0;height:46px;
+  background:var(--raise);color:var(--text);
+  border:none;border-radius:8px;cursor:pointer;
+  display:grid;place-items:center;
+}
+.key:active{background:#202B26}
+.key.wide{flex:1.7 1 auto;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.key.used{color:var(--muted)}
+.key.dead{background:#171E1B;color:var(--dim)}
+.key:focus-visible,button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.share{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+  background:var(--correct);color:var(--mint-ink);
+  border:none;border-radius:16px;padding:17px;cursor:pointer;
+  font:inherit;font-size:1.05rem;font-weight:800;letter-spacing:.01em;
+}
+.share:active{filter:brightness(.94)}
+.ghost{
+  width:100%;background:transparent;color:var(--muted);
+  border:1px solid var(--card-line);border-radius:14px;padding:13px;cursor:pointer;
+  font:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+}
+
+.toast{
+  position:fixed;left:50%;bottom:calc(248px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  background:var(--text);color:var(--ground);
+  padding:9px 16px;border-radius:999px;
+  font-size:12.5px;font-weight:800;white-space:nowrap;
+  opacity:0;transition:opacity .18s ease;pointer-events:none;z-index:40;
+}
+.toast.show{opacity:1}
+
+/* ---------- hojas y zoom ---------- */
+.veil{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(4,8,7,.72);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0;
+}
+.veil[hidden]{display:none}
+.sheet{
+  width:100%;max-width:560px;
+  background:var(--raise);
+  border-radius:20px 20px 0 0;
+  padding:18px 18px calc(22px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:12px;
+  max-height:86vh;overflow-y:auto;
+  animation:up .26s ease;
+}
+@keyframes up{from{transform:translateY(14px);opacity:.6}to{transform:none;opacity:1}}
+.sheet h2{
+  margin:0;font-family:"Outfit","Figtree",sans-serif;font-weight:700;font-size:1.25rem;
+}
+.sheet p{margin:0;font-size:13.5px;line-height:1.6;color:var(--muted)}
+.sheet p b{color:var(--text);font-weight:700}
+.legend{display:flex;flex-direction:column;gap:8px}
+.lg{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.lg i{
+  width:26px;height:26px;border-radius:5px;flex:0 0 26px;
+  display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;color:var(--on-fill);
+}
+.big{
+  font-family:"Outfit","Figtree",sans-serif;font-weight:700;font-size:2.7rem;line-height:1;
+  margin:0;font-variant-numeric:tabular-nums;
+}
+.big.hit{color:var(--mint)}
+.sheetlist{
+  display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;
+  font-size:12.5px;font-variant-numeric:tabular-nums;
+}
+.sheetlist div{
+  display:flex;justify-content:space-between;gap:8px;
+  padding:5px 0;border-bottom:1px solid var(--card-line);letter-spacing:.02em;
+}
+.sheetlist b{font-weight:800}
+.sheetlist .w{color:var(--mint)}
+.sheetlist .m{color:var(--dim)}
+.rowbtn{display:flex;gap:8px}
+
+.zoomwrap{
+  width:100%;max-width:420px;margin:auto;
+  background:var(--card);border:1px solid var(--card-line);border-radius:18px;
+  padding:14px;display:flex;flex-direction:column;gap:10px;
+  max-height:88vh;
+}
+.zoomtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.zoomtop .zoomtop{gap:12px;justify-content:flex-end}
+.zoomtop span{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.zoomtop .word{font-family:"Outfit",sans-serif;font-size:1.1rem;letter-spacing:.14em;color:var(--mint)}
+.zoomboard{display:flex;flex-direction:column;gap:5px;overflow-y:auto}
+.zoomboard .mrow{gap:5px}
+.zoomboard .mt{border-radius:7px;font-size:1.15rem}
+.zoomboard .check{width:52px;height:52px}
+.veil.center{align-items:center;padding:16px}
+
+@media (prefers-reduced-motion:reduce){
+  .reveal,.et.pop,.entry.shake,.sheet{animation:none}
+  .toast{transition:none}
+}
+@media (min-width:520px){
+  .mt{font-size:15px}
+  .grid{gap:12px}
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="9"></circle><path d="M9.2 9.3a2.9 2.9 0 1 1 3.7 3.1c-.7.3-1 .8-1 1.6v.4"></path><path d="M12 17.6h.01"></path>
+  </symbol>
+  <symbol id="i-stats" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M5 19V11"></path><path d="M12 19V5"></path><path d="M19 19v-6"></path>
+  </symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 8.5 6.5 11H4v4h2.5L10 17.5z"></path><path d="M14.5 9.2a4.2 4.2 0 0 1 0 7.6"></path><path d="M17.4 6.4a7.6 7.6 0 0 1 0 13.2" opacity=".85"></path>
+  </symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 8.5 6.5 11H4v4h2.5L10 17.5z"></path><path d="M15 10.5l5 5"></path><path d="M20 10.5l-5 5"></path>
+  </symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 4H4v6"></path><path d="M14 20h6v-6"></path><path d="M4 4l6 6"></path><path d="M20 20l-6-6"></path>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12.5l4.5 4.5L19 7.5"></path>
+  </symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="5.5" r="2.6"></circle><circle cx="6" cy="12" r="2.6"></circle><circle cx="18" cy="18.5" r="2.6"></circle>
+    <path d="M8.3 10.7l7.4-3.9"></path><path d="M8.3 13.3l7.4 3.9"></path>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M6 6l12 12"></path><path d="M18 6L6 18"></path>
+  </symbol>
+</svg>
+
+<div class="app">
+  <div class="bar">
+    <button class="round" id="snd" type="button" aria-pressed="true" aria-label="Sonido">
+      <svg width="22" height="22"><use href="#i-sound" id="sndIcon"></use></svg>
+    </button>
+    <div class="mid">
+      <h1>Palabrero 16</h1>
+      <p class="sub" id="sub">0/16 resueltos</p>
+      <p class="sub2" id="sub2"></p>
+    </div>
+    <div class="side">
+      <button class="round" id="help" type="button" aria-label="Cómo se juega">
+        <svg width="22" height="22"><use href="#i-help"></use></svg>
+      </button>
+      <button class="round" id="stats" type="button" aria-label="Resultado">
+        <svg width="22" height="22"><use href="#i-stats"></use></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="dock" id="dock">
+    <div class="entry" id="entry"></div>
+    <div id="keyboard"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="veil" id="sheetVeil" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<div class="veil center" id="zoomVeil" hidden>
+  <div class="zoomwrap" id="zoomWrap" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var WORDS = ["LIBRO","VERDE","FUEGO","PLAYA","SUEÑO","CANTO","MUNDO","TIGRE",
+               "NOCHE","JUGAR","PIANO","SALUD","BRAVO","QUESO","LLAVE","ZORRO"];
+  var COLS = 5, BOARDS = WORDS.length, MAX = 21, MINROWS = 7;
+  var STORE = "palabrero16.v2";
+  var LAYOUT = ["QWERTYUIOP", "ASDFGHJKLÑ", "ZXCVBNM"];
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var gridEl = document.getElementById("grid");
+  var entryEl = document.getElementById("entry");
+  var kbEl = document.getElementById("keyboard");
+  var dockEl = document.getElementById("dock");
+  var subEl = document.getElementById("sub");
+  var sub2El = document.getElementById("sub2");
+  var toastEl = document.getElementById("toast");
+  var sndBtn = document.getElementById("snd");
+  var sndIcon = document.getElementById("sndIcon");
+  var sheetVeil = document.getElementById("sheetVeil");
+  var sheetEl = document.getElementById("sheet");
+  var zoomVeil = document.getElementById("zoomVeil");
+  var zoomWrap = document.getElementById("zoomWrap");
+
+  var etEls = [], keyEls = {}, boardEls = [];
+  var toastTimer = null, soundOn = true, zoomed = null;
+
+  var state = { guesses:[], cur:"", solved:new Array(BOARDS).fill(null) };
+
+  /* ================= sonido ================= */
+  var ac = null, master = null, echo = null;
+
+  function audio(){
+    if(ac) return ac;
+    var C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return null;
+    try{ ac = new C(); }catch(e){ return null; }
+    master = ac.createGain();
+    master.gain.value = 0.5;
+    master.connect(ac.destination);
+    echo = ac.createDelay(1);
+    echo.delayTime.value = 0.17;
+    var fb = ac.createGain(); fb.gain.value = 0.22;
+    var wet = ac.createGain(); wet.gain.value = 0.2;
+    var damp = ac.createBiquadFilter();
+    damp.type = "lowpass"; damp.frequency.value = 1700;
+    echo.connect(fb); fb.connect(echo);
+    echo.connect(damp); damp.connect(wet); wet.connect(master);
+    return ac;
+  }
+
+  function note(freq, dur, gain, when, timbre){
+    if(!soundOn) return;
+    var c = audio();
+    if(!c) return;
+    if(c.state === "suspended"){ try{ c.resume(); }catch(e){} }
+    var t = c.currentTime + (when || 0);
+    var o = c.createOscillator(), o2 = c.createOscillator();
+    var h = c.createGain(), g = c.createGain(), lp = c.createBiquadFilter();
+
+    o.type = "sine"; o.frequency.value = freq;
+    o2.type = (timbre === "wood") ? "triangle" : "sine";
+    o2.frequency.value = freq * ((timbre === "wood") ? 2.01 : 3.005);
+    h.gain.value = (timbre === "wood") ? 0.22 : 0.09;
+
+    lp.type = "lowpass";
+    lp.frequency.value = Math.min(5200, freq * 5.5);
+    lp.Q.value = 0.45;
+
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.014);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+
+    o.connect(g); o2.connect(h); h.connect(g);
+    g.connect(lp); lp.connect(master);
+    if(echo) lp.connect(echo);
+
+    o.start(t); o2.start(t);
+    o.stop(t + dur + 0.06); o2.stop(t + dur + 0.06);
+  }
+
+  var SCALE = [392.00, 440.00, 523.25, 587.33, 659.25];
+
+  function sfxType(pos){ note(SCALE[pos % SCALE.length], 0.75, 0.10, 0, "wood"); }
+  function sfxBack(){ note(261.63, 0.5, 0.075, 0, "wood"); }
+  function sfxSend(){ note(329.63, 1.1, 0.07, 0); note(493.88, 1.2, 0.055, 0.055); }
+  function sfxNope(){ note(174.61, 0.45, 0.06, 0, "wood"); note(164.81, 0.5, 0.05, 0.07, "wood"); }
+  function sfxSolved(){ [659.25, 783.99, 987.77].forEach(function(f, n){ note(f, 1.5, 0.075, n * 0.08); }); }
+  function sfxEnd(win){
+    var chord = win ? [392.00, 587.33, 783.99, 1174.66] : [392.00, 466.16, 587.33];
+    chord.forEach(function(f, n){ note(f, 2.6, 0.07, n * 0.16); });
+  }
+
+  /* ================= utilidades ================= */
+  function norm(s){
+    var up = s.toUpperCase();
+    if(up === "\u00D1") return "\u00D1";
+    return up.normalize("NFD").replace(/[\u0300-\u036F]/g, "");
+  }
+
+
+  function score(guess, target){
+    var marks = new Array(COLS).fill("absent");
+    var g = guess.split(""), t = target.split(""), i, j;
+    for(i=0;i<COLS;i++){ if(g[i] === t[i]){ marks[i] = "correct"; t[i] = null; } }
+    for(i=0;i<COLS;i++){
+      if(marks[i] === "correct") continue;
+      j = t.indexOf(g[i]);
+      if(j > -1){ marks[i] = "present"; t[j] = null; }
+    }
+    return marks;
+  }
+
+  function solvedCount(){ return state.solved.filter(function(v){ return v !== null; }).length; }
+  function pendingCount(){ return BOARDS - solvedCount(); }
+  function tries(){ return MAX - state.guesses.length; }
+  /* cada tablero que falta necesita al menos un intento propio */
+  function impossible(){ return pendingCount() > tries(); }
+  function won(){ return solvedCount() === BOARDS; }
+  function over(){ return won() || state.guesses.length >= MAX || impossible(); }
+  function visibleRows(){ return Math.min(MAX, Math.max(MINROWS, state.guesses.length + 1)); }
+
+  function save(){
+    try{
+      localStorage.setItem(STORE, JSON.stringify({
+        guesses:state.guesses, solved:state.solved, sound:soundOn
+      }));
+    }catch(e){}
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORE);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(typeof d.sound === "boolean") soundOn = d.sound;
+      if(!Array.isArray(d.guesses) || !Array.isArray(d.solved) || d.solved.length !== BOARDS) return;
+      state.guesses = d.guesses.slice(0, MAX);
+      state.solved = d.solved;
+    }catch(e){}
+  }
+  function wipe(){ try{ localStorage.removeItem(STORE); }catch(e){} }
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
+  }
+
+  function icon(id, size){
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", size); svg.setAttribute("height", size);
+    var use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#" + id);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  /* ================= construcción ================= */
+  function buildEntry(){
+    entryEl.textContent = "";
+    etEls = [];
+    for(var c=0;c<COLS;c++){
+      var t = document.createElement("div");
+      t.className = "et";
+      entryEl.appendChild(t);
+      etEls.push(t);
+    }
+  }
+
+  function makeKey(label, value, wide){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "key" + (wide ? " wide" : "");
+    b.textContent = label;
+    b.addEventListener("click", function(){ press(value); });
+    return b;
+  }
+
+  function buildKeyboard(){
+    kbEl.textContent = "";
+    keyEls = {};
+    LAYOUT.forEach(function(letters, idx){
+      var row = document.createElement("div");
+      row.className = "krow";
+      if(idx === 2) row.appendChild(makeKey("Enviar", "ENTER", true));
+      letters.split("").forEach(function(ch){
+        var k = makeKey(ch, ch, false);
+        keyEls[ch] = k;
+        row.appendChild(k);
+      });
+      if(idx === 2) row.appendChild(makeKey("Borrar", "BACK", true));
+      kbEl.appendChild(row);
+    });
+  }
+
+  function buildBoards(){
+    gridEl.textContent = "";
+    boardEls = [];
+    for(var b=0;b<BOARDS;b++){
+      (function(b){
+        var card = document.createElement("article");
+        card.className = "bd";
+        var top = document.createElement("div");
+        top.className = "top";
+        var zb = document.createElement("button");
+        zb.type = "button"; zb.className = "zoom";
+        zb.setAttribute("aria-label", "Ampliar tablero " + (b+1));
+        zb.appendChild(icon("i-zoom", 15));
+        zb.addEventListener("click", function(){ openZoom(b); });
+        var wd = document.createElement("span");
+        wd.className = "wd";
+        var no = document.createElement("span");
+        no.className = "no";
+        no.textContent = "#" + (b+1);
+        top.appendChild(zb); top.appendChild(wd); top.appendChild(no);
+        var mini = document.createElement("div");
+        mini.className = "mini";
+        card.appendChild(top); card.appendChild(mini);
+        gridEl.appendChild(card);
+        boardEls.push({card:card, mini:mini, wd:wd});
+      })(b);
+    }
+  }
+
+  /* ================= pintado ================= */
+  function fillBoard(host, b, rows, animateLast){
+    var target = WORDS[b];
+    var at = state.solved[b];
+    host.textContent = "";
+    for(var r=0;r<rows;r++){
+      var word = state.guesses[r];
+      var row = document.createElement("div");
+      row.className = "mrow";
+      var show = word && (at === null || r < at);
+      var marks = show ? score(word, target) : null;
+      var isLast = animateLast && !reduce && show && (r === state.guesses.length - 1);
+      for(var c=0;c<COLS;c++){
+        var t = document.createElement("div");
+        if(show){
+          t.className = "mt " + marks[c] + (isLast ? " reveal" : "");
+          if(isLast) t.style.animationDelay = (c * 0.05) + "s";
+          t.textContent = word[c];
+        }else{
+          t.className = "mt empty";
+        }
+        row.appendChild(t);
+      }
+      if(at !== null && r === at - 1){
+        var badge = document.createElement("div");
+        badge.className = "check";
+        badge.appendChild(icon("i-check", 20));
+        row.appendChild(badge);
+      }
+      host.appendChild(row);
+    }
+  }
+
+  function paintBoards(animateLast){
+    var rows = visibleRows();
+    for(var b=0;b<BOARDS;b++){
+      var ref = boardEls[b];
+      var at = state.solved[b];
+      ref.card.className = "bd" + (at !== null ? " win" : (over() ? " lost" : ""));
+      ref.wd.textContent = (at === null && over()) ? WORDS[b] : "";
+      fillBoard(ref.mini, b, rows, animateLast);
+    }
+    if(zoomed !== null) renderZoom();
+  }
+
+  function paintEntry(){
+    for(var c=0;c<COLS;c++){
+      var ch = state.cur[c] || "";
+      var t = etEls[c];
+      var fresh = (t.textContent !== ch) && ch;
+      t.textContent = ch;
+      t.className = "et" + (ch ? " on" : "");
+      if(fresh && !reduce){ void t.offsetWidth; t.classList.add("pop"); }
+    }
+  }
+
+  function paintKeys(){
+    var used = {}, dead = {}, pending = [];
+    for(var b=0;b<BOARDS;b++){ if(state.solved[b] === null) pending.push(WORDS[b]); }
+    state.guesses.forEach(function(word){
+      word.split("").forEach(function(ch){
+        used[ch] = true;
+        if(!pending.some(function(w){ return w.indexOf(ch) > -1; })) dead[ch] = true;
+      });
+    });
+    Object.keys(keyEls).forEach(function(ch){
+      keyEls[ch].className = "key" + (dead[ch] ? " dead" : (used[ch] ? " used" : ""));
+    });
+  }
+
+  function paintSub(){
+    var s = solvedCount();
+    subEl.textContent = s + "/" + BOARDS + " resueltos";
+    if(over()){
+      sub2El.textContent = won()
+        ? "en " + state.guesses.length + " intentos"
+        : (impossible() && state.guesses.length < MAX ? "perdiste: no alcanzaban los intentos" : "perdiste: se acabaron los intentos");
+      sub2El.classList.toggle("warn", !won());
+      return;
+    }
+    sub2El.textContent = "quedan " + tries() + " intentos para " + pendingCount() + " tableros";
+    sub2El.classList.toggle("warn", tries() - pendingCount() <= 1);
+  }
+
+  function paintDock(){
+    dockEl.textContent = "";
+    if(over()){
+      var share = document.createElement("button");
+      share.type = "button"; share.className = "share";
+      share.appendChild(icon("i-share", 20));
+      var sp = document.createElement("span");
+      sp.textContent = "Compartir";
+      share.appendChild(sp);
+      share.addEventListener("click", shareResult);
+
+      var again = document.createElement("button");
+      again.type = "button"; again.className = "ghost";
+      again.textContent = "Jugar de nuevo";
+      again.addEventListener("click", reset);
+
+      dockEl.appendChild(share);
+      dockEl.appendChild(again);
+    }else{
+      dockEl.appendChild(entryEl);
+      dockEl.appendChild(kbEl);
+    }
+  }
+
+  function paintAll(animateLast){
+    paintBoards(animateLast);
+    paintEntry();
+    paintKeys();
+    paintSub();
+    paintDock();
+  }
+
+  /* ================= juego ================= */
+  function press(v){
+    if(over() || !sheetVeil.hidden || !zoomVeil.hidden) return;
+    if(v === "ENTER") return submit();
+    if(v === "BACK"){
+      if(state.cur.length){
+        state.cur = state.cur.slice(0, -1);
+        paintEntry(); sfxBack();
+      }
+      return;
+    }
+    if(state.cur.length < COLS){
+      var pos = state.cur.length;
+      state.cur += v;
+      paintEntry(); sfxType(pos);
+    }
+  }
+
+  function submit(){
+    if(state.cur.length < COLS){
+      toast("Faltan letras");
+      sfxNope();
+      if(!reduce){
+        entryEl.classList.remove("shake");
+        void entryEl.offsetWidth;
+        entryEl.classList.add("shake");
+      }
+      return;
+    }
+    var guess = state.cur;
+    state.guesses.push(guess);
+    state.cur = "";
+
+    var hits = [];
+    for(var b=0;b<BOARDS;b++){
+      if(state.solved[b] === null && WORDS[b] === guess){
+        state.solved[b] = state.guesses.length;
+        hits.push(b + 1);
+      }
+    }
+
+    sfxSend();
+    if(hits.length) setTimeout(sfxSolved, 190);
+
+    save();
+    paintAll(true);
+
+    if(hits.length === 1) toast(guess + " · tablero #" + hits[0]);
+    else if(hits.length > 1) toast(guess + " · " + hits.length + " tableros");
+
+    if(over()){
+      setTimeout(function(){ sfxEnd(solvedCount() === BOARDS); }, 520);
+      setTimeout(function(){ openSheet("stats"); }, 700);
+    }
+  }
+
+  function reset(){
+    wipe();
+    state = { guesses:[], cur:"", solved:new Array(BOARDS).fill(null) };
+    closeSheet();
+    paintAll(false);
+    save();
+    window.scrollTo({top:0, behavior:"auto"});
+  }
+
+  function resultText(){
+    var s = solvedCount();
+    return "Palabrero 16 — " + s + "/" + BOARDS + " en " + state.guesses.length + " intentos\n" +
+           state.solved.map(function(v){ return v !== null ? v : "×"; }).join(" ");
+  }
+
+  function shareResult(){
+    var text = resultText();
+    if(navigator.share){
+      try{
+        navigator.share({title:"Palabrero 16", text:text}).catch(function(){ copyResult(text); });
+        return;
+      }catch(e){}
+    }
+    copyResult(text);
+  }
+
+  function copyResult(text){
+    var ok = false;
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text); ok = true;
+      }
+    }catch(e){}
+    if(!ok){
+      try{
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta); ok = true;
+      }catch(e2){}
+    }
+    toast(ok ? "Resultado copiado" : "No se pudo copiar");
+  }
+
+  /* ================= hojas ================= */
+  function sheetHead(title){
+    var head = document.createElement("div");
+    head.className = "zoomtop";
+    var h = document.createElement("h2");
+    h.textContent = title;
+    var x = document.createElement("button");
+    x.type = "button"; x.className = "round";
+    x.setAttribute("aria-label", "Cerrar");
+    x.appendChild(icon("i-close", 20));
+    x.addEventListener("click", closeSheet);
+    head.appendChild(h); head.appendChild(x);
+    return head;
+  }
+
+  function openSheet(kind){
+    sheetEl.textContent = "";
+    sheetEl.appendChild(sheetHead(kind === "help"
+      ? "Cómo se juega"
+      : (over() ? (won() ? "¡Ganaste!" : "Perdiste") : "Tu partida")));
+
+    if(kind === "help"){
+      [
+        "Escribís <b>una palabra de 5 letras</b> y se juega contra los <b>16 tableros a la vez</b>. Cada tablero tiene su propia palabra secreta.",
+        "Tenés <b>21 intentos</b> en total para resolver los 16. Un tablero se cierra con un tilde verde cuando cae su palabra.",
+        "Como cada tablero necesita al menos un intento propio, la partida se marca <b>perdida en cuanto quedan menos intentos que tableros sin resolver</b>.",
+        "Toc&aacute; la flechita de cada tablero para <b>ampliarlo</b> y verlo grande.",
+        "La <b>Ñ</b> tiene su tecla y cuenta como letra propia; los acentos se ignoran. Se acepta cualquier combinación de 5 letras.",
+        "Una tecla se apaga sólo cuando esa letra <b>no está en ninguna palabra que falte</b>."
+      ].forEach(function(t){
+        var p = document.createElement("p");
+        p.innerHTML = t;
+        sheetEl.appendChild(p);
+      });
+
+      var legend = document.createElement("div");
+      legend.className = "legend";
+      [["correct","A","está en esa posición"],
+       ["present","M","está en la palabra, en otro lugar"],
+       ["absent","Z","no está en esa palabra"]].forEach(function(row){
+        var lg = document.createElement("div");
+        lg.className = "lg";
+        var i = document.createElement("i");
+        i.className = row[0];
+        i.style.background = "var(--" + row[0] + ")";
+        if(row[0] === "absent") i.style.color = "var(--muted)";
+        i.textContent = row[1];
+        var sp = document.createElement("span");
+        sp.textContent = row[2];
+        lg.appendChild(i); lg.appendChild(sp);
+        legend.appendChild(lg);
+      });
+      sheetEl.appendChild(legend);
+    }else{
+      var s = solvedCount();
+      var win = s === BOARDS;
+
+      var big = document.createElement("p");
+      big.className = "big" + (win ? " hit" : "");
+      big.textContent = s + "/" + BOARDS;
+      sheetEl.appendChild(big);
+
+      var det = document.createElement("p");
+      if(!over()){
+        det.textContent = "Vas en el intento " + (state.guesses.length + 1) + " de " + MAX +
+          ": quedan " + tries() + " intentos para " + pendingCount() + " tableros.";
+      }else if(win){
+        det.textContent = "Cayeron las 16 en " + state.guesses.length + " intentos.";
+      }else if(state.guesses.length < MAX){
+        det.textContent = "Quedaban " + pendingCount() + " tableros y sólo " + tries() +
+          " intentos, así que ya no alcanzaba: partida perdida.";
+      }else{
+        det.textContent = "Se terminaron los " + MAX + " intentos.";
+      }
+      sheetEl.appendChild(det);
+
+      var list = document.createElement("div");
+      list.className = "sheetlist";
+      WORDS.forEach(function(w, n){
+        var at = state.solved[n];
+        var line = document.createElement("div");
+        var name = document.createElement("span");
+        name.textContent = (at !== null || over()) ? w : "#" + (n+1);
+        var val = document.createElement("b");
+        val.className = at !== null ? "w" : "m";
+        val.textContent = at !== null ? ("intento " + at) : (over() ? "no salió" : "abierto");
+        line.appendChild(name); line.appendChild(val);
+        list.appendChild(line);
+      });
+      sheetEl.appendChild(list);
+
+      var row = document.createElement("div");
+      row.className = "rowbtn";
+      var copy = document.createElement("button");
+      copy.type = "button"; copy.className = "ghost";
+      copy.textContent = "Copiar resultado";
+      copy.addEventListener("click", function(){ copyResult(resultText()); });
+      row.appendChild(copy);
+      if(over()){
+        var again = document.createElement("button");
+        again.type = "button"; again.className = "ghost";
+        again.textContent = "Jugar de nuevo";
+        again.addEventListener("click", reset);
+        row.appendChild(again);
+      }
+      sheetEl.appendChild(row);
+    }
+
+    sheetVeil.hidden = false;
+  }
+
+  function closeSheet(){ sheetVeil.hidden = true; }
+
+  function renderZoom(){
+    var b = zoomed;
+    if(b === null) return;
+    zoomWrap.textContent = "";
+
+    var top = document.createElement("div");
+    top.className = "zoomtop";
+    var label = document.createElement("span");
+    label.textContent = "Tablero #" + (b+1);
+    var right = document.createElement("div");
+    right.className = "zoomtop";
+    if(state.solved[b] !== null || over()){
+      var w = document.createElement("span");
+      w.className = "word";
+      w.textContent = WORDS[b];
+      right.appendChild(w);
+    }
+    var x = document.createElement("button");
+    x.type = "button"; x.className = "round";
+    x.setAttribute("aria-label", "Cerrar");
+    x.appendChild(icon("i-close", 20));
+    x.addEventListener("click", closeZoom);
+    right.appendChild(x);
+    top.appendChild(label); top.appendChild(right);
+
+    var board = document.createElement("div");
+    board.className = "zoomboard";
+    fillBoard(board, b, visibleRows(), false);
+
+    zoomWrap.appendChild(top);
+    zoomWrap.appendChild(board);
+    zoomVeil.hidden = false;
+  }
+
+  function openZoom(b){ zoomed = b; renderZoom(); }
+  function closeZoom(){ zoomed = null; zoomVeil.hidden = true; }
+
+  document.getElementById("help").addEventListener("click", function(){ openSheet("help"); });
+  document.getElementById("stats").addEventListener("click", function(){ openSheet("stats"); });
+  sheetVeil.addEventListener("click", function(e){ if(e.target === sheetVeil) closeSheet(); });
+  zoomVeil.addEventListener("click", function(e){ if(e.target === zoomVeil) closeZoom(); });
+
+  sndBtn.addEventListener("click", function(){
+    soundOn = !soundOn;
+    sndBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    sndIcon.setAttribute("href", soundOn ? "#i-sound" : "#i-mute");
+    save();
+    if(soundOn) note(523.25, 0.8, 0.09, 0, "wood");
+  });
+
+  /* ================= teclado físico ================= */
+  document.addEventListener("keydown", function(e){
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(e.key === "Escape"){
+      if(!zoomVeil.hidden) closeZoom();
+      else if(!sheetVeil.hidden) closeSheet();
+      return;
+    }
+    if(!sheetVeil.hidden || !zoomVeil.hidden) return;
+    if(e.key === "Enter"){
+      if(document.activeElement && document.activeElement.tagName === "BUTTON") return;
+      e.preventDefault(); press("ENTER"); return;
+    }
+    if(e.key === "Backspace"){ e.preventDefault(); press("BACK"); return; }
+    if(e.key.length === 1){
+      var ch = norm(e.key);
+      if(/^[A-ZÑ]$/.test(ch)){ e.preventDefault(); press(ch); }
+    }
+  });
+
+  /* ================= arranque ================= */
+  load();
+  sndBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+  sndIcon.setAttribute("href", soundOn ? "#i-sound" : "#i-mute");
+  buildBoards();
+  buildEntry();
+  buildKeyboard();
+  paintAll(false);
+})();
+</script>
+
+</body>
+</html>
